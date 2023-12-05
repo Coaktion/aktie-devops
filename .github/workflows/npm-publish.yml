@@ -1,0 +1,62 @@
+name: Node.js Package
+
+on:
+  workflow_call:
+    inputs:
+      open_source:
+        description: 'Publish to NPM'
+        required: true
+        type: string
+      node_version:
+        description: 'Node.js version'
+        required: false
+        default: '16'
+        type: string
+
+env:
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node_version }}
+      - run: npm ci
+      - run: npm test
+
+  publish-github:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node_version }}
+          registry-url: https://npm.pkg.github.com/
+      - run: npm ci
+      - run: npm publish
+
+  publish-npm:
+    if: ${{ inputs.open_source == 'true' }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node_version }}
+          registry-url: https://registry.npmjs.org/
+      - run: |
+          sed -i 's/npm.pkg.github.com/registry.npmjs.org/g' package.json
+          sed -i 's/npm.pkg.github.com/registry.npmjs.org/g' .npmrc
+          sed -i 's/GITHUB_TOKEN/NPM_TOKEN/g' .npmrc
+      - run: npm ci
+      - run: npm publish
