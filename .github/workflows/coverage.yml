@@ -7,12 +7,16 @@ on:
         required: false
         default: '16.x'
         type: string
+    secrets:
+      cc_test_reporter_id:
+        description: 'Code Climate Test Reporter ID'
+        required: true
 
 permissions:
   contents: read
 
 env:
-  CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+  CC_TEST_REPORTER_ID: ${{ secrets.cc_test_reporter_id }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
