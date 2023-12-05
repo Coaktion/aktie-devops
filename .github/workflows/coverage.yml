@@ -1,0 +1,35 @@
+name: Report Coverage
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        description: 'Node.js version to use'
+        required: false
+        default: '16.x'
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ inputs.node_version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node_version }}
+
+      - name: Install Node Modules
+        run: npm ci
+
+      - name: Report Coverage
+        uses: paambaati/codeclimate-action@v3.2.0
+        with:
+          coverageCommand: npm test --reporter=lcov
