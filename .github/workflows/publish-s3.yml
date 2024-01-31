@@ -1,0 +1,56 @@
+name: Publish Zendesk APP to S3 Bucket
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  GITHUB_TOKEN: ${{ secrets.AKTIE_NOW_GITHUB_CI_TOKEN }}
+  SOURCE_FILE: ${{ github.event.release.tag_name }}.tar.gz
+  DEST_DIR: ${{ github.event.repository.name }}
+
+jobs:
+  publish-s3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js 18.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+
+      - name: Install Node Modules
+        run: npm ci
+
+      - name: NPM Audit
+        run: npx audit-ci
+
+      - name: Run Tests and Linting
+        run: npm test
+
+      - name: Build
+        run: |
+          npm run build
+          cp -r zendesk/assets/* dist/assets
+          cp -r zendesk/translations dist
+          cp zendesk/manifest.json dist
+          mv dist/index.html dist/assets/index.html
+          sed -i 's/http\:\/\/localhost\:[0-9]\+/assets\/index.html/g' dist/manifest.json
+          sed -i 's/\/assets\//\.\//g' dist/assets/index.html
+          sed -i 's/url.\//url(/g' dist/assets/*.css
+          mkdir tarball
+          tar -zcvf tarball/$SOURCE_FILE dist/*
+
+      - name: Publish S3
+        uses: jakejarvis/s3-sync-action@master
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
+          SOURCE_DIR: tarball
